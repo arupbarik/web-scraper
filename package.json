@@ -1,0 +1,27 @@
+{
+  "dependencies": {
+    "cheerio": "^1.2.0"
+  },
+  "name": "web-scraper",
+  "version": "1.0.0",
+  "description": "Web scraper/crawler",
+  "main": "main.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arupbarik/web-scraper.git"
+  },
+  "keywords": [
+    "wbe",
+    "scraping"
+  ],
+  "author": "Arup Barik",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/arupbarik/web-scraper/issues"
+  },
+  "homepage": "https://github.com/arupbarik/web-scraper#readme"
+}
