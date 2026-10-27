@@ -1,12 +1,12 @@
 {
   "dependencies": {
-    "cheerio": "^1.2.0"
+    "cheerio": "^1.2.0",
+    "prompt-sync": "^4.2.0"
   },
   "name": "web-scraper",
   "version": "1.0.0",
   "description": "Web scraper/crawler",
   "main": "main.js",
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

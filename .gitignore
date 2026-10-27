@@ -1,3 +1,7 @@
 *.env
 node_modules/
 .vscode/
+REQUIREMENTS.md
+ARCHITECTURE.md
+IMPLEMENTATION_PLAN.md
+Reasearch-Files/
