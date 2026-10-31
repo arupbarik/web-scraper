@@ -1,7 +1,8 @@
 {
   "dependencies": {
     "cheerio": "^1.2.0",
-    "prompt-sync": "^4.2.0"
+    "prompt-sync": "^4.2.0",
+    "robots-parser": "^3.0.1"
   },
   "name": "web-scraper",
   "version": "1.0.0",

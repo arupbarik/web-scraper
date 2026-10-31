@@ -7,3 +7,6 @@ IMPLEMENTATION_PLAN.md
 Reasearch-Files/
 *.txt
 json/
+result/
+pagedata/
+test.js

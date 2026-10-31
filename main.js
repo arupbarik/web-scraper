@@ -1,17 +1,20 @@
 // hey lets start the project 
-// import PromptSync from "prompt-sync";
+import PromptSync from "prompt-sync";
 import * as cheerio from 'cheerio';
 import {URL} from 'node:url';
 import * as fs from 'node:fs/promises';
+import robotsParser from "robots-parser";
+
+const prompt=PromptSync();
 
 async function fetch_url(url) {
-
     const response=await fetch(url);
+
     if(!response.ok){
         throw new Error(`HTTP${response.status}:${url}`);
     }
-    const data=await response.text();
 
+    const data=await response.text();
     return data;
 }
 
@@ -21,109 +24,137 @@ const delay=(time)=>{
     })
 }
 
-const base="https://books.toscrape.com/";
-let data;
-let count=1;
-const bt=[`page${count}`];
-const next_link_queue=[];
-const book_details_arr=[];
-const error_logs=[];
-const links=[];
-try {
-    const response=await fetch(base);
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${base}`);
+function links_extractor(html,selector,base){
+    const $=cheerio.load(html);
+    const links=[];
+    $(selector).each((i,el)=>{
+        const link=$(el).attr('href');
+        const url=new URL(link,base)
+        links.push(url.href);
+    });
+    return links;
+}
+
+function extractor(html,slector){
+    const $=cheerio.load(html);
+    const data=[];
+    $(slector).each((i,el)=>{
+        data.push($(el).text());
+    })
+}
+
+function queue(arr,robot){
+    const url_queue=[];
+    for(let targeturl of arr){
+        const allowed=robot.isAllowed(targeturl,USER_AGENT);
+        if(allowed===true){
+            url_queue.push(targeturl);
+        }
     }
-    data=await response.text();
+    return url_queue;
+}
+ 
+async function getrobot(base){
+    const origin=new URL(base).origin;
+    const roboturl=new URL("robots.txt",origin).href;
+
+    const response=await fetch(roboturl,{
+        headers:
+        {"User-Agent": USER_AGENT}
+    });
+
+    if (response.status === 404) {
+        return robotsParser(roboturl, "");
+    }
+    
+    if (!response.ok) {
+        throw new Error(
+            `Unable to retrieve robots.txt: ${response.status}`
+        );
+    }
+    const robottext= await response.text();
+    return robotsParser(roboturl,robottext);
+}
+
+//base link and declare require variables
+const base=prompt("Enter your url:").toLowerCase();
+const max_page=Number(prompt("How many pages"));
+const max_depth=Number(prompt("How mcuh depth"));
+
+const all_url=[];
+const error_logs=[];
+const url_queue=[];    
+const url_visited=[];
+const selector_info=[];
+const result=[];
+
+//it is a crawler identity
+const USER_AGENT = "web-scraper"; 
+
+//robots .txt fetching
+const robot=await getrobot(base);
+const reqdelay=robot.getCrawlDelay(USER_AGENT);
+
+//fetching the base url and extracting that page link
+try {
+    const html=await fetch_url(base);
+    all_url.push(links_extractor(html,"a",base));
+    
+    //sorting all eligible urls
+    const sort=queue(all_url,robot);
+    url_queue.push(sort);
+    all_url.length=0;
+     
+    // console.log("page is fetched and all available linked are fetched");
+
 } catch (error) {
-    console.error(`type: ${error.name}
-        message:${error.message}`);
-    throw error;
-}
-
-await fs.mkdir("json",{recursive:true});
-const $=cheerio.load(data);
-
-//initial next data
-let start_next=$('.next a').attr('href');
-let nexturl=new URL(start_next,base);
-next_link_queue.push(nexturl);
-
-
-//stores titles of all books in each page
-$('.product_pod h3 a').each((index,ele)=>{
-    const $ele=$(ele).attr("title");
-    bt.push($ele)
-});
-// console.log(bt);
-
-//stores titles of all books links in each page
-$('.product_pod h3 a').each((index,ele)=>{
-    const link=$(ele).attr("href");
-    let url=new URL(link,base)
-    links.push(url.href);
-});
-
-while(1){
-    const html=await fetch_url(nexturl.href);
-    const $page=cheerio.load(html);
-
-    //stores titles of all books in each page
-    count+=1;
-    bt.push(`page${count}`);
-    $page('.product_pod h3 a').each((index,ele)=>{
-    const $ele=$page(ele).attr("title");
-    bt.push($ele);
-});
-
-    //storing next urls
-    start_next=$page('.next a').attr('href');
-    if(start_next===undefined){break;}
-    nexturl=new URL(start_next,nexturl);
-    next_link_queue.push(nexturl.href);
-
-    //stores titles of all books links in each page
-    $page('.product_pod h3 a').each((index,ele)=>{
-    const link=$page(ele).attr("href");
-    let url=new URL(link,nexturl)
-    links.push(url.href);
-});
-}
-
-//storing all books title,price and availability of each page 
-for(let urrl of links){
-    try {
-        const book_details={
-           name:"",
-           price:"",
-           availability:""
-        }
-        console.log(`Processing: ${urrl}`);
-        let html=await fetch_url(urrl);
-        const $book_page=cheerio.load(html);
-
-        book_details.name=$book_page('.col-sm-6.product_main h1').text().trim();
-        book_details.availability= $book_page('.col-sm-6.product_main p.instock.availability').text().trim();
-        book_details.price=$book_page('.col-sm-6.product_main p.price_color').text().trim();
-        book_details_arr.push(book_details);
-    } catch (error) {
-        const logs={
-            type:"",
-            msg:"",
-            failed_url:""
-        }
+    const logs={
+        type:"",
+        msg:"",
+        failed_url:""
+    }
         logs.type=error.name;
         logs.msg=error.message;
-        logs.failed_url=urrl;
+        logs.failed_url=base;
         error_logs.push(logs);
-    }
-    await delay(500)
+        console.error(error.message);
 }
 
-//store all data
-await fs.writeFile("json/book_details.json",JSON.stringify(book_details_arr,null,2));
-await fs.writeFile("json/book_url.json",JSON.stringify(links,null,2));
-await fs.writeFile("json/data.json",JSON.stringify(bt,null,2));
-await fs.writeFile("json/logs.json",JSON.stringify(error_logs,null,2));
-await fs.writeFile("json/next_page_urls.json",JSON.stringify(next_link_queue,null,2));
+// now collect all neceesary data from user
+console.log("Do you want specific selector data or just generic information (eg. title,all headings,and paragraphs etc.)");
+const choice=prompt("y or n:").toLowerCase();
 
+while(1){
+    if(choice==="n"){
+        break;
+    }
+    else{
+        const selectors={
+            field:"",
+            cssselector:""
+        };
+        selectors.field=prompt("Enter field title:").toLowerCase();
+        selectors.cssselector=prompt("Enter its css selector to extract").toLowerCase();
+        // selectors[field_name]=cssselector;
+
+        console.log("what is the type of data");
+        const extract_choice=prompt("links(l) or text (t) [be carefull sensitive to input!!]: ").toLowerCase();
+        if(extract_choice==="l" || "links"){
+            // use links_extractor()
+            const key="type";
+            selectors[key]="link";
+            selector_info.push(selectors);
+        }
+        else{
+            // use extractor()
+            const key="type";
+            selectors[key]="text";
+            selector_info.push(selectors);
+        }
+
+        const continuation_choice=prompt("do you want to add more fields y or n:").toLowerCase();
+        if(continuation_choice==="n"){
+            break;
+        }
+    }
+}
