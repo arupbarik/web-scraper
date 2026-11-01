@@ -62,8 +62,4 @@ Use the crawler only on sites you are authorized to crawl. Same-origin crawling 
 The crawler records retry, queue, concurrency, and robots metrics in `data.json`. Robots-declared sitemap URLs are not automatically expanded because doing so could bypass the configured page bound or create unbounded work. Long-running checkpoint/resume persistence is intentionally not implemented; page and queue bounds make the in-memory frontier finite.
 
 ## Documentation
-
-- `ARCHITECTURE.md` describes the data flow and state model.
 - `TEST_REPORT.md` records executed tests and results.
-- `AI_CONTRIBUTION.md` distinguishes original and AI-assisted work.
-- `Reasearch-Files/` contains the existing project research and roadmap materials. No root `project-roadmap.txt` was present in the repository.
