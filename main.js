@@ -18,7 +18,7 @@ async function fetch_url(url) {
     return data;
 }
 
-const delay=(time)=>{
+const delay=(time=100)=>{
     return new Promise ((resolve)=>{
         setTimeout(resolve,time);
     })
@@ -41,6 +41,7 @@ function extractor(html,slector){
     $(slector).each((i,el)=>{
         data.push($(el).text());
     })
+    return data;
 }
 
 function queue(arr,robot){
@@ -78,15 +79,27 @@ async function getrobot(base){
 
 //base link and declare require variables
 const base=prompt("Enter your url:").toLowerCase();
-const max_page=Number(prompt("How many pages"));
-const max_depth=Number(prompt("How mcuh depth"));
+let max_page;
+let max_depth;
+while(1){
+    max_page=Number(prompt("How many pages"));
+    max_depth=Number(prompt("How mcuh depth"));
+
+    if(max_depth || max_page <0){
+        console.log("cant be negative please retry!");
+    }
+    else{
+        break;
+    }
+}
 
 const all_url=[];
-const error_logs=[];
-const url_queue=[];    
-const url_visited=[];
+const error_logs=[];  //result/logs.json
+const url_queue=[];   //result/all_eligible_urls.json    
+const url_visited=[];  //result/extracted_data_urls.json
 const selector_info=[];
-const result=[];
+const result=[];   //result/data.json
+let depth=0;
 
 //it is a crawler identity
 const USER_AGENT = "web-scraper"; 
@@ -113,22 +126,19 @@ try {
         msg:"",
         failed_url:""
     }
-        logs.type=error.name;
-        logs.msg=error.message;
-        logs.failed_url=base;
-        error_logs.push(logs);
-        console.error(error.message);
+    logs.type=error.name;
+    logs.msg=error.message;
+    logs.failed_url=base;
+    error_logs.push(logs);
+    console.error(error.message);
 }
 
 // now collect all neceesary data from user
 console.log("Do you want specific selector data or just generic information (eg. title,all headings,and paragraphs etc.)");
 const choice=prompt("y or n:").toLowerCase();
 
-while(1){
-    if(choice==="n"){
-        break;
-    }
-    else{
+if (choice==="y") {
+    while(1){
         const selectors={
             field:"",
             cssselector:""
@@ -139,7 +149,7 @@ while(1){
 
         console.log("what is the type of data");
         const extract_choice=prompt("links(l) or text (t) [be carefull sensitive to input!!]: ").toLowerCase();
-        if(extract_choice==="l" || "links"){
+        if(extract_choice===("l" || "links")){
             // use links_extractor()
             const key="type";
             selectors[key]="link";
@@ -157,4 +167,53 @@ while(1){
             break;
         }
     }
+}
+else {
+    //general extraction
+}
+
+//discover all links according to depth
+try {
+    let temp=url_queue;
+    while(depth!=max_depth+1){
+        const queue_length=url_queue.length;
+        for(let url of temp){
+            const html =await fetch_url(url);
+            all_url.push(links_extractor(html,"a",url));
+            url_queue.push(queue(all_url,robot));
+            await delay(reqdelay);
+        }
+        const count=queue_length-url_queue.length;
+        temp=url_queue.slice(queue_length,count);
+        depth++;
+    }
+} catch (error) {
+    const logs={
+        type:"",
+        msg:"",
+        failed_url:""
+    }
+    logs.type=error.name;
+    logs.msg=error.message;
+    logs.failed_url=base;
+    error_logs.push(logs);
+    console.error(error.message);
+}
+
+//queue based fetching
+try {
+    let count=url_queue.length-max_page;
+    url_queue.splice(-count,count);
+
+} catch (error) {
+    const logs={
+        type:"",
+        msg:"",
+        failed_url:""
+    }
+    logs.type=error.name;
+    logs.msg=error.message;
+    logs.failed_url=base;
+    error_logs.push(logs);
+    console.error(error.message);
 }
